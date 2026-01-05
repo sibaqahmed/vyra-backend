@@ -1,22 +1,20 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const fs = require("fs");
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
 
-// 🔑 PRIVATE KEY (same key uploaded in JAAS → API Keys)
-const PRIVATE_KEY = fs.readFileSync("./jitsi_private_key.pem", "utf8");
+// ✅ READ FROM ENV VARIABLES (RENDER)
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const APP_ID = process.env.APP_ID;
+const KID = process.env.KID;
 
-// 🔹 JAAS TENANT / APP ID
-const APP_ID = "vpaas-magic-cookie-2fbbf37f24184f5eb71ad71a6b5a3ac3";
+if (!PRIVATE_KEY || !APP_ID || !KID) {
+  console.error("❌ Missing environment variables");
+  process.exit(1);
+}
 
-// 🔹 FULL KEY ID (Tenant/KeyId)
-const KID =
-  "vpaas-magic-cookie-2fbbf37f24184f5eb71ad71a6b5a3ac3/c39c6e";
-
-// 🔐 JWT ENDPOINT
 app.get("/jwt", (req, res) => {
   const { name, moderator } = req.query;
 
@@ -28,21 +26,12 @@ app.get("/jwt", (req, res) => {
     aud: "jitsi",
     iss: "chat",
     sub: APP_ID,
-
-    // 🚨 REQUIRED FOR JAAS
     room: "*",
-
     exp: Math.floor(Date.now() / 1000) + 60 * 60,
-
     context: {
       user: {
         name,
         moderator: moderator === "true",
-      },
-      features: {
-        livestreaming: false,
-        recording: false,
-        transcription: false,
       },
     },
   };
@@ -58,15 +47,11 @@ app.get("/jwt", (req, res) => {
   res.json({ token });
 });
 
-// 🔹 ROOT CHECK
 app.get("/", (_, res) => {
   res.send("JWT Server Running");
 });
 
-// 🚀 START SERVER
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-  console.log(`JWT server running on port ${PORT}`);
+  console.log(`✅ JWT server running on port ${PORT}`);
 });
-
